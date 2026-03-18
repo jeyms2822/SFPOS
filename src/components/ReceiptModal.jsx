@@ -5,6 +5,7 @@ const SHOP_ADDR_1 = '1410 Kapanalig, Maypajo';
 const SHOP_ADDR_2 = 'Caloocan, 1400 Metro Manila';
 const SHOP_TIN    = 'TIN: XXX-XXX-XXX-000';
 const THANKS      = 'Thank you for visiting!';
+const NON_OFFICIAL_NOTE = 'This is not an official receipt';
 
 const BLE_SERVICE_UUIDS = [
   '000018f0-0000-1000-8000-00805f9b34fb',
@@ -49,7 +50,7 @@ export default function ReceiptModal({ receipt, onClose }) {
       <html>
         <head>
           <meta charset="utf-8" />
-          <title>Receipt</title>
+          <title>Claim Stub</title>
           <style>
             html, body { margin: 0; padding: 0; background: #fff; }
             body { padding: 10px; }
@@ -152,7 +153,7 @@ export default function ReceiptModal({ receipt, onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal receipt-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Receipt</h2>
+          <h2>Claim Stub</h2>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
 
@@ -198,7 +199,7 @@ const ReceiptContent = forwardRef(function ReceiptContentInner({ receipt }, ref)
         <p className="rcp-divider">{'- '.repeat(22).trim()}</p>
 
         <div className="rcp-meta">
-          <div className="rcp-row"><span>Receipt #</span><span>{receipt.receiptNumber}</span></div>
+          <div className="rcp-row"><span>Claim Stub #</span><span>{receipt.receiptNumber}</span></div>
           <div className="rcp-row"><span>Date</span><span>{dateStr}</span></div>
           <div className="rcp-row"><span>Time</span><span>{timeStr}</span></div>
           <div className="rcp-row"><span>Payment</span><span>{receipt.paymentMethod}</span></div>
@@ -225,7 +226,6 @@ const ReceiptContent = forwardRef(function ReceiptContentInner({ receipt }, ref)
 
         <div className="rcp-totals">
           <div className="rcp-row"><span>Subtotal</span><span>P{receipt.subtotal.toFixed(2)}</span></div>
-          <div className="rcp-row"><span>VAT (12%)</span><span>P{receipt.tax.toFixed(2)}</span></div>
           <div className="rcp-row rcp-grand"><span>TOTAL</span><span>P{receipt.total.toFixed(2)}</span></div>
 
           {receipt.paymentMethod === 'Cash' && (
@@ -241,8 +241,8 @@ const ReceiptContent = forwardRef(function ReceiptContentInner({ receipt }, ref)
         <div className="rcp-footer">
           <p>{THANKS}</p>
           <p>Please come again</p>
+          <p>{NON_OFFICIAL_NOTE}</p>
           <p className="rcp-tin">{SHOP_TIN}</p>
-          <p className="rcp-tin">VAT Registered</p>
         </div>
       </div>
     );
@@ -306,7 +306,7 @@ function buildReceiptText(receipt) {
   lines.push(center('1410 Kapanalig, Maypajo'));
   lines.push(center('Caloocan, 1400 Metro Manila'));
   lines.push(repeat('-', 32));
-  lines.push(linePair('Receipt', receipt.receiptNumber));
+  lines.push(linePair('Claim Stub', receipt.receiptNumber));
   lines.push(linePair('Date', date.toLocaleDateString('en-PH')));
   lines.push(linePair('Time', date.toLocaleTimeString('en-PH')));
   lines.push(linePair('Payment', receipt.paymentMethod));
@@ -320,7 +320,6 @@ function buildReceiptText(receipt) {
 
   lines.push(repeat('-', 32));
   lines.push(linePair('Subtotal', `P${Number(receipt.subtotal).toFixed(2)}`));
-  lines.push(linePair('VAT (12%)', `P${Number(receipt.tax).toFixed(2)}`));
   lines.push(linePair('TOTAL', `P${Number(receipt.total).toFixed(2)}`));
   if (receipt.paymentMethod === 'Cash') {
     lines.push(linePair('Cash', `P${Number(receipt.amountReceived).toFixed(2)}`));
@@ -329,6 +328,7 @@ function buildReceiptText(receipt) {
   lines.push(repeat('-', 32));
   lines.push(center('Thank you for visiting!'));
   lines.push(center('Please come again'));
+  lines.push(center(NON_OFFICIAL_NOTE));
 
   return `${lines.join('\n')}\n`;
 }
