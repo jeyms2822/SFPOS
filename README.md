@@ -24,6 +24,8 @@ Deploy to GitHub Pages with one command:
 
 This command builds the app with the correct base path and publishes the `dist` folder to the `gh-pages` branch.
 
+For GitHub Actions based Pages deploys, commit a `.env.production` file with your `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_POS_STORE_ID` values so cloud sync is enabled in the hosted build.
+
 ## Realtime Multi-Device Sync
 
 By default, this POS stores data in each browser's local storage only.
