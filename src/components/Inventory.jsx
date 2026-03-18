@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CATEGORIES, CATEGORY_COLORS } from '../data/products';
 
-const EMPTY_FORM = { name: '', price: '', category: 'Iced Coffee', emoji: '☕', stock: '', lowStock: '5' };
+const EMPTY_FORM = { name: '', price: '', cost: '', category: 'Iced Coffee', emoji: '☕', stock: '', lowStock: '5' };
 
 export default function Inventory({ products, onAdd, onUpdate, onDelete, onDeleteAll }) {
   const [filterCat,   setFilterCat]   = useState('All');
@@ -150,14 +150,14 @@ export default function Inventory({ products, onAdd, onUpdate, onDelete, onDelet
 /* ─── Inline edit row ───────────────────────────────────────── */
 function EditRow({ product, onSave, onCancel }) {
   const [form, setForm] = useState({
-    name: product.name, price: String(product.price),
+    name: product.name, price: String(product.price), cost: String(product.cost || ''),
     emoji: product.emoji, stock: String(product.stock), lowStock: String(product.lowStock),
   });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSave = () => {
     if (!form.name || !form.price) return;
-    onSave({ name: form.name, price: parseFloat(form.price), emoji: form.emoji, stock: parseInt(form.stock) || 0, lowStock: parseInt(form.lowStock) || 0 });
+    onSave({ name: form.name, price: parseFloat(form.price), cost: parseFloat(form.cost) || 0, emoji: form.emoji, stock: parseInt(form.stock) || 0, lowStock: parseInt(form.lowStock) || 0 });
   };
 
   return (
@@ -165,7 +165,8 @@ function EditRow({ product, onSave, onCancel }) {
       <td><input className="tbl-input" value={form.emoji} onChange={e => set('emoji', e.target.value)} style={{ width: 48, textAlign: 'center' }} />
           <input className="tbl-input" value={form.name} onChange={e => set('name', e.target.value)} style={{ width: 130 }} /></td>
       <td>—</td>
-      <td><input className="tbl-input" type="number" value={form.price} onChange={e => set('price', e.target.value)} style={{ width: 80 }} /></td>
+      <td><input className="tbl-input" type="number" step="0.01" value={form.price} onChange={e => set('price', e.target.value)} style={{ width: 80 }} /></td>
+      <td><input className="tbl-input" type="number" step="0.01" value={form.cost} onChange={e => set('cost', e.target.value)} placeholder="Cost" style={{ width: 70 }} /></td>
       <td><input className="tbl-input" type="number" value={form.stock} onChange={e => set('stock', e.target.value)} style={{ width: 70 }} /></td>
       <td><input className="tbl-input" type="number" value={form.lowStock} onChange={e => set('lowStock', e.target.value)} style={{ width: 70 }} /></td>
       <td>—</td>
@@ -190,6 +191,7 @@ function ProductFormModal({ onSave, onClose }) {
     onSave({
       name:     form.name.trim(),
       price:    parseFloat(form.price),
+      cost:     parseFloat(form.cost) || 0,
       category: form.category,
       emoji:    form.emoji.trim() || '🍵',
       stock:    parseInt(form.stock) || 0,
@@ -226,6 +228,10 @@ function ProductFormModal({ onSave, onClose }) {
             <div className="form-group">
               <label>Price (₱) *</label>
               <input type="number" value={form.price} onChange={e => set('price', e.target.value)} placeholder="0.00" min="0" step="0.01" required />
+            </div>
+            <div className="form-group">
+              <label>Cost (₱)</label>
+              <input type="number" value={form.cost} onChange={e => set('cost', e.target.value)} placeholder="0.00" min="0" step="0.01" />
             </div>
           </div>
 

@@ -63,6 +63,7 @@ function normalizeProducts(products) {
         id: Number(p.id) || Date.now() + index,
         name: String(p.name || 'Unnamed Item'),
         price: Number(p.price) || 0,
+        cost: Number(p.cost) || 0,
         category,
         emoji: String(p.emoji || '☕'),
         stock: Math.max(0, Number(p.stock) || 0),
