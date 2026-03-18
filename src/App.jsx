@@ -38,7 +38,7 @@ function normalizeProducts(products) {
       id: Number(p.id) || Date.now() + index,
       name: String(p.name || 'Unnamed Item'),
       price: Number(p.price) || 0,
-      category: String(p.category || 'Coffee'),
+      category: String(p.category || 'Iced Coffee'),
       emoji: String(p.emoji || '☕'),
       stock: Math.max(0, Number(p.stock) || 0),
       lowStock: Math.max(0, Number(p.lowStock) || 5),

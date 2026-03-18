@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CATEGORIES, CATEGORY_COLORS } from '../data/products';
 
-const EMPTY_FORM = { name: '', price: '', category: 'Coffee', emoji: '☕', stock: '', lowStock: '5' };
+const EMPTY_FORM = { name: '', price: '', category: 'Iced Coffee', emoji: '☕', stock: '', lowStock: '5' };
 
 export default function Inventory({ products, onAdd, onUpdate, onDelete }) {
   const [filterCat,   setFilterCat]   = useState('All');
