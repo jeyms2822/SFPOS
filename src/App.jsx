@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { initialProducts } from './data/products';
+import { CATEGORIES, initialProducts } from './data/products';
 import { APP_USERS } from './data/users';
 import Dashboard     from './components/Dashboard';
 import POSView       from './components/POSView';
@@ -18,6 +18,14 @@ const TABS = [
 
 const TAX_RATE = 0.12;
 const USER_SESSION_KEY = 'sip-current-user';
+const VALID_CATEGORIES = new Set(CATEGORIES.filter(c => c !== 'All'));
+
+const LEGACY_CATEGORY_MAP = {
+  Coffee: 'Hot Coffee',
+  Tea: 'Milktea & Cheesecake Series',
+  Food: 'Add Ons',
+  Drinks: 'Fruit Soda',
+};
 
 function loadLS(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
@@ -34,15 +42,21 @@ function normalizeProducts(products) {
 
   return products
     .filter(p => p && typeof p === 'object')
-    .map((p, index) => ({
-      id: Number(p.id) || Date.now() + index,
-      name: String(p.name || 'Unnamed Item'),
-      price: Number(p.price) || 0,
-      category: String(p.category || 'Iced Coffee'),
-      emoji: String(p.emoji || '☕'),
-      stock: Math.max(0, Number(p.stock) || 0),
-      lowStock: Math.max(0, Number(p.lowStock) || 5),
-    }));
+    .map((p, index) => {
+      const rawCategory = String(p.category || 'Iced Coffee');
+      const mappedCategory = LEGACY_CATEGORY_MAP[rawCategory] || rawCategory;
+      const category = VALID_CATEGORIES.has(mappedCategory) ? mappedCategory : 'Iced Coffee';
+
+      return {
+        id: Number(p.id) || Date.now() + index,
+        name: String(p.name || 'Unnamed Item'),
+        price: Number(p.price) || 0,
+        category,
+        emoji: String(p.emoji || '☕'),
+        stock: Math.max(0, Number(p.stock) || 0),
+        lowStock: Math.max(0, Number(p.lowStock) || 5),
+      };
+    });
 }
 
 function normalizeTransactions(transactions) {
