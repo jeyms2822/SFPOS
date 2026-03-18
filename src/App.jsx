@@ -49,7 +49,7 @@ function loadArrayLS(key, fallback) {
 }
 
 function normalizeProducts(products) {
-  if (!Array.isArray(products) || products.length === 0) return initialProducts;
+  if (!Array.isArray(products)) return initialProducts;
 
   return products
     .filter(p => p && typeof p === 'object')
@@ -491,6 +491,12 @@ export default function App() {
     setProducts(prev => prev.filter(p => p.id !== id));
   };
 
+  const deleteAllProducts = () => {
+    markPendingLocalChanges();
+    setProducts([]);
+    setCart([]);
+  };
+
   const lowStockCount = products.filter(p => p.stock <= p.lowStock).length;
 
   if (!currentUser) {
@@ -597,6 +603,7 @@ export default function App() {
             onAdd={addProduct}
             onUpdate={updateProduct}
             onDelete={deleteProduct}
+            onDeleteAll={deleteAllProducts}
           />
         )}
         {activeTab === 'sales' && (

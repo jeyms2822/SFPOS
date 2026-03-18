@@ -3,11 +3,12 @@ import { CATEGORIES, CATEGORY_COLORS } from '../data/products';
 
 const EMPTY_FORM = { name: '', price: '', category: 'Iced Coffee', emoji: '☕', stock: '', lowStock: '5' };
 
-export default function Inventory({ products, onAdd, onUpdate, onDelete }) {
+export default function Inventory({ products, onAdd, onUpdate, onDelete, onDeleteAll }) {
   const [filterCat,   setFilterCat]   = useState('All');
   const [showForm,    setShowForm]    = useState(false);
   const [editingId,   setEditingId]   = useState(null);
   const [deleteId,    setDeleteId]    = useState(null);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
 
   const filtered = filterCat === 'All' ? products : products.filter(p => p.category === filterCat);
 
@@ -16,7 +17,16 @@ export default function Inventory({ products, onAdd, onUpdate, onDelete }) {
       {/* Header */}
       <div className="inv-header">
         <h2 className="section-title">Inventory Management</h2>
-        <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ Add Product</button>
+        <div className="action-row">
+          <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ Add Product</button>
+          <button
+            className="btn btn-danger"
+            onClick={() => setDeleteAllOpen(true)}
+            disabled={products.length === 0}
+          >
+            Delete All Products
+          </button>
+        </div>
       </div>
 
       {/* Stats row */}
@@ -119,6 +129,18 @@ export default function Inventory({ products, onAdd, onUpdate, onDelete }) {
           message={`Delete "${products.find(p => p.id === deleteId)?.name}"? This cannot be undone.`}
           onConfirm={() => { onDelete(deleteId); setDeleteId(null); }}
           onCancel={() => setDeleteId(null)}
+        />
+      )}
+
+      {deleteAllOpen && (
+        <ConfirmModal
+          title="Delete All Products"
+          message={`Delete all ${products.length} products? This cannot be undone.`}
+          onConfirm={() => {
+            onDeleteAll();
+            setDeleteAllOpen(false);
+          }}
+          onCancel={() => setDeleteAllOpen(false)}
         />
       )}
     </div>
@@ -229,11 +251,11 @@ function ProductFormModal({ onSave, onClose }) {
 }
 
 /* ─── Confirm dialog ────────────────────────────────────────── */
-function ConfirmModal({ message, onConfirm, onCancel }) {
+function ConfirmModal({ title = 'Confirm Delete', message, onConfirm, onCancel }) {
   return (
     <div className="modal-overlay" onClick={onCancel}>
       <div className="modal confirm-modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Confirm Delete</h2></div>
+        <div className="modal-header"><h2>{title}</h2></div>
         <div className="modal-body"><p>{message}</p></div>
         <div className="modal-footer">
           <button className="btn btn-outline" onClick={onCancel}>Cancel</button>
