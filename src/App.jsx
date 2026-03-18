@@ -139,9 +139,14 @@ export default function App() {
   const applyingRemoteRef = useRef(false);
   const cloudWriteTimerRef = useRef(null);
   const cloudPullingRef = useRef(false);
+  const hasPendingLocalChangesRef = useRef(false);
   const lastCloudStampRef = useRef(null);
 
   const allowedTabs = TABS.filter(t => t.roles.includes(currentUser?.role || ''));
+
+  const markPendingLocalChanges = () => {
+    hasPendingLocalChangesRef.current = true;
+  };
 
   const applyCloudSnapshot = (cloudState) => {
     if (!cloudState) return;
@@ -156,6 +161,7 @@ export default function App() {
 
   const pullLatestCloudState = async () => {
     if (!cloudEnabled || cloudPullingRef.current) return;
+    if (hasPendingLocalChangesRef.current) return;
 
     cloudPullingRef.current = true;
     try {
@@ -228,6 +234,7 @@ export default function App() {
 
     const unsubscribe = subscribeCloudState((cloudState) => {
       if (cancelled) return;
+      if (hasPendingLocalChangesRef.current) return;
       if (cloudState.updatedAt && cloudState.updatedAt === lastCloudStampRef.current) return;
 
       applyCloudSnapshot(cloudState);
@@ -298,6 +305,7 @@ export default function App() {
         const stamp = await pushCloudState(payload);
         lastCloudStampRef.current = stamp;
         setLastSyncedAt(stamp);
+        hasPendingLocalChangesRef.current = false;
         setSyncState('live');
       } catch (error) {
         console.error('Cloud sync push failed:', error);
@@ -369,16 +377,26 @@ export default function App() {
 
     setSyncState('connecting');
     try {
-      const cloudState = await pullCloudState();
-      if (cloudState) {
-        applyCloudSnapshot(cloudState);
-      } else {
+      if (hasPendingLocalChangesRef.current) {
         const stamp = await pushCloudState({
           products: productsRef.current,
           transactions: transactionsRef.current,
         });
         lastCloudStampRef.current = stamp;
         setLastSyncedAt(stamp);
+        hasPendingLocalChangesRef.current = false;
+      } else {
+        const cloudState = await pullCloudState();
+        if (cloudState) {
+          applyCloudSnapshot(cloudState);
+        } else {
+          const stamp = await pushCloudState({
+            products: productsRef.current,
+            transactions: transactionsRef.current,
+          });
+          lastCloudStampRef.current = stamp;
+          setLastSyncedAt(stamp);
+        }
       }
       setSyncState('live');
     } catch (error) {
@@ -393,6 +411,7 @@ export default function App() {
   const cartItemCount = cart.reduce((s, i) => s + i.quantity, 0);
 
   const completeCheckout = ({ amountReceived, paymentMethod }) => {
+    markPendingLocalChanges();
     const receipt = {
       id:            Date.now().toString(),
       receiptNumber: `SCR-${String(Date.now()).slice(-6)}`,
@@ -425,6 +444,8 @@ export default function App() {
     if (!tx) return { ok: false, message: 'Transaction not found.' };
     if (tx.refunded) return { ok: false, message: 'This transaction is already refunded.' };
 
+    markPendingLocalChanges();
+
     setProducts(prev =>
       prev.map(product => {
         const soldItem = tx.items.find(item => item.id === product.id);
@@ -446,6 +467,7 @@ export default function App() {
   };
 
   const resetSalesHistory = () => {
+    markPendingLocalChanges();
     setTransactions([]);
     setReceiptOpen(false);
     setCurrentReceipt(null);
@@ -454,9 +476,20 @@ export default function App() {
 
   const openReceiptFromHistory = (tx) => { setCurrentReceipt(tx); setReceiptOpen(true); };
 
-  const addProduct    = (p)       => setProducts(prev => [...prev, { ...p, id: Date.now() }]);
-  const updateProduct = (id, upd) => setProducts(prev => prev.map(p => p.id === id ? { ...p, ...upd } : p));
-  const deleteProduct = (id)      => setProducts(prev => prev.filter(p => p.id !== id));
+  const addProduct = (p) => {
+    markPendingLocalChanges();
+    setProducts(prev => [...prev, { ...p, id: Date.now() }]);
+  };
+
+  const updateProduct = (id, upd) => {
+    markPendingLocalChanges();
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, ...upd } : p));
+  };
+
+  const deleteProduct = (id) => {
+    markPendingLocalChanges();
+    setProducts(prev => prev.filter(p => p.id !== id));
+  };
 
   const lowStockCount = products.filter(p => p.stock <= p.lowStock).length;
 
