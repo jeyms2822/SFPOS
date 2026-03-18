@@ -210,13 +210,13 @@ const ReceiptContent = forwardRef(function ReceiptContentInner({ receipt }, ref)
         <div className="rcp-items">
           <div className="rcp-items-hdr">
             <span>Item</span>
-            <span>Qty</span>
+            <span>Cost</span>
             <span>Amt</span>
           </div>
           {receipt.items.map((item, idx) => (
             <div key={`${item.id}-${idx}`} className="rcp-item">
               <span className="rcp-item-name">{item.name}</span>
-              <span className="rcp-item-qty">x{item.quantity}</span>
+              <span className="rcp-item-qty">P{item.price}</span>
               <span className="rcp-item-amt">P{(item.price * item.quantity).toFixed(2)}</span>
             </div>
           ))}
@@ -225,7 +225,6 @@ const ReceiptContent = forwardRef(function ReceiptContentInner({ receipt }, ref)
         <p className="rcp-divider">{'- '.repeat(22).trim()}</p>
 
         <div className="rcp-totals">
-          <div className="rcp-row"><span>Subtotal</span><span>P{receipt.subtotal.toFixed(2)}</span></div>
           <div className="rcp-row rcp-grand"><span>TOTAL</span><span>P{receipt.total.toFixed(2)}</span></div>
 
           {receipt.paymentMethod === 'Cash' && (
@@ -319,8 +318,7 @@ function buildReceiptText(receipt) {
   }
 
   lines.push(repeat('-', 32));
-  lines.push(linePair('Subtotal', `P${Number(receipt.subtotal).toFixed(2)}`));
-  lines.push(linePair('TOTAL', `P${Number(receipt.total).toFixed(2)}`));
+  lines.push(linePair('TOTAL', `P${Number(receipt.total).toFixed(2)}`, 32));
   if (receipt.paymentMethod === 'Cash') {
     lines.push(linePair('Cash', `P${Number(receipt.amountReceived).toFixed(2)}`));
     lines.push(linePair('Change', `P${Number(receipt.change).toFixed(2)}`));

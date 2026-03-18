@@ -23,7 +23,7 @@ const TABS = [
   { id: 'sales',     label: 'Sales',     icon: '📋', roles: ['admin', 'cashier'] },
 ];
 
-const TAX_RATE = 0.12;
+const TAX_RATE = 0;
 const USER_SESSION_KEY = 'sip-current-user';
 const PRODUCTS_KEY = 'sip-products';
 const TRANSACTIONS_KEY = 'sip-transactions';
@@ -33,7 +33,8 @@ const VALID_CATEGORIES = new Set(CATEGORIES.filter(c => c !== 'All'));
 
 const LEGACY_CATEGORY_MAP = {
   Coffee: 'Hot Coffee',
-  Tea: 'Milktea & Cheesecake Series',
+  'Milktea & Cheesecake Series': 'Classic Milktea',
+  Tea: 'Classic Milktea',
   Food: 'Add Ons',
   Drinks: 'Fruit Soda',
 };

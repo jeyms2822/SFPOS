@@ -4,7 +4,8 @@ export const CATEGORIES = [
   'Hot Coffee',
   'Frappe - Espresso Based',
   'Frappe - Non Coffee',
-  'Milktea & Cheesecake Series',
+  'Classic Milktea',
+  'Cheesecake Series',
   'Fruit Soda',
   'Add Ons',
 ];
@@ -14,7 +15,8 @@ export const CATEGORY_COLORS = {
   'Hot Coffee': '#6F4E37',
   'Frappe - Espresso Based': '#5D6D7E',
   'Frappe - Non Coffee': '#A569BD',
-  'Milktea & Cheesecake Series': '#AF7AC5',
+  'Classic Milktea': '#AF7AC5',
+  'Cheesecake Series': '#D7BDE2',
   'Fruit Soda': '#16A085',
   'Add Ons': '#F39C12',
 };
@@ -38,10 +40,10 @@ export const initialProducts = [
   { id: 13, name: 'Choco Frappe',           price: 160, category: 'Frappe - Non Coffee',         emoji: '🍫', stock: 20, lowStock: 6  },
   { id: 14, name: 'Cookies & Cream Frappe', price: 170, category: 'Frappe - Non Coffee',         emoji: '🍪', stock: 18, lowStock: 6  },
 
-  { id: 15, name: 'Wintermelon Milk Tea',   price: 120, category: 'Milktea & Cheesecake Series', emoji: '🧋', stock: 35, lowStock: 8  },
-  { id: 16, name: 'Okinawa Milk Tea',       price: 125, category: 'Milktea & Cheesecake Series', emoji: '🧋', stock: 35, lowStock: 8  },
-  { id: 17, name: 'Strawberry Cheesecake',  price: 150, category: 'Milktea & Cheesecake Series', emoji: '🍰', stock: 20, lowStock: 6  },
-  { id: 18, name: 'Dark Choco Cheesecake',  price: 155, category: 'Milktea & Cheesecake Series', emoji: '🍫', stock: 20, lowStock: 6  },
+  { id: 15, name: 'Wintermelon Milk Tea',   price: 120, category: 'Classic Milktea', emoji: '🧋', stock: 35, lowStock: 8  },
+  { id: 16, name: 'Okinawa Milk Tea',       price: 125, category: 'Classic Milktea', emoji: '🧋', stock: 35, lowStock: 8  },
+  { id: 17, name: 'Strawberry Cheesecake',  price: 150, category: 'Cheesecake Series', emoji: '🍰', stock: 20, lowStock: 6  },
+  { id: 18, name: 'Dark Choco Cheesecake',  price: 155, category: 'Cheesecake Series', emoji: '🍫', stock: 20, lowStock: 6  },
 
   { id: 19, name: 'Green Apple Soda',       price: 105, category: 'Fruit Soda',                  emoji: '🍏', stock: 25, lowStock: 6  },
   { id: 20, name: 'Blue Lemon Soda',        price: 110, category: 'Fruit Soda',                  emoji: '🫐', stock: 25, lowStock: 6  },

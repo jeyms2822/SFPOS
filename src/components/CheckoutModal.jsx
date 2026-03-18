@@ -51,8 +51,6 @@ export default function CheckoutModal({ cart, subtotal, tax, total, onClose, onC
               ))}
             </div>
             <div className="co-totals">
-              <div className="co-tot-row"><span>Subtotal</span><span>₱{subtotal.toFixed(2)}</span></div>
-              <div className="co-tot-row"><span>VAT (12%)</span><span>₱{tax.toFixed(2)}</span></div>
               <div className="co-tot-row grand"><span>Total</span><span>₱{total.toFixed(2)}</span></div>
             </div>
           </div>
