@@ -28,6 +28,7 @@ const USER_SESSION_KEY = 'sip-current-user';
 const PRODUCTS_KEY = 'sip-products';
 const TRANSACTIONS_KEY = 'sip-transactions';
 const CLOUD_PUSH_DELAY_MS = 450;
+const CLOUD_PULL_INTERVAL_MS = 4000;
 const VALID_CATEGORIES = new Set(CATEGORIES.filter(c => c !== 'All'));
 
 const LEGACY_CATEGORY_MAP = {
@@ -137,6 +138,7 @@ export default function App() {
   const cloudReadyRef = useRef(!cloudEnabled);
   const applyingRemoteRef = useRef(false);
   const cloudWriteTimerRef = useRef(null);
+  const cloudPullingRef = useRef(false);
   const lastCloudStampRef = useRef(null);
 
   const allowedTabs = TABS.filter(t => t.roles.includes(currentUser?.role || ''));
@@ -150,6 +152,25 @@ export default function App() {
     setProducts(normalizeProducts(cloudState.products));
     setTransactions(normalizeTransactions(cloudState.transactions));
     setTimeout(() => { applyingRemoteRef.current = false; }, 0);
+  };
+
+  const pullLatestCloudState = async () => {
+    if (!cloudEnabled || cloudPullingRef.current) return;
+
+    cloudPullingRef.current = true;
+    try {
+      const cloudState = await pullCloudState();
+      if (!cloudState) return;
+      if (cloudState.updatedAt && cloudState.updatedAt === lastCloudStampRef.current) return;
+
+      applyCloudSnapshot(cloudState);
+      setSyncState('live');
+    } catch (error) {
+      console.error('Cloud sync pull failed:', error);
+      setSyncState('error');
+    } finally {
+      cloudPullingRef.current = false;
+    }
   };
 
   useEffect(() => {
@@ -215,15 +236,21 @@ export default function App() {
 
     bootstrapCloud();
 
+    const intervalId = setInterval(() => {
+      if (!networkOnline || cancelled) return;
+      pullLatestCloudState();
+    }, CLOUD_PULL_INTERVAL_MS);
+
     return () => {
       cancelled = true;
       unsubscribe();
+      clearInterval(intervalId);
       if (cloudWriteTimerRef.current) {
         clearTimeout(cloudWriteTimerRef.current);
         cloudWriteTimerRef.current = null;
       }
     };
-  }, [cloudEnabled]);
+  }, [cloudEnabled, networkOnline]);
 
   useEffect(() => {
     if (!currentUser) {
