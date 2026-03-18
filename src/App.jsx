@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CATEGORIES, initialProducts } from './data/products';
 import { APP_USERS } from './data/users';
 import Dashboard     from './components/Dashboard';
@@ -8,6 +8,13 @@ import SalesHistory  from './components/SalesHistory';
 import CheckoutModal from './components/CheckoutModal';
 import ReceiptModal  from './components/ReceiptModal';
 import LoginScreen   from './components/LoginScreen';
+import {
+  getStoreId,
+  isCloudSyncEnabled,
+  pullCloudState,
+  pushCloudState,
+  subscribeCloudState,
+} from './lib/cloudSync';
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊', roles: ['admin'] },
@@ -18,6 +25,9 @@ const TABS = [
 
 const TAX_RATE = 0.12;
 const USER_SESSION_KEY = 'sip-current-user';
+const PRODUCTS_KEY = 'sip-products';
+const TRANSACTIONS_KEY = 'sip-transactions';
+const CLOUD_PUSH_DELAY_MS = 450;
 const VALID_CATEGORIES = new Set(CATEGORIES.filter(c => c !== 'All'));
 
 const LEGACY_CATEGORY_MAP = {
@@ -95,16 +105,90 @@ function normalizeUserSession(user) {
 }
 
 export default function App() {
+  const cloudEnabled = isCloudSyncEnabled();
   const [activeTab,      setActiveTab]      = useState('pos');
   const [currentUser,    setCurrentUser]    = useState(() => normalizeUserSession(loadLS(USER_SESSION_KEY, null)));
-  const [products,       setProducts]       = useState(() => normalizeProducts(loadArrayLS('sip-products', initialProducts)));
+  const [products,       setProducts]       = useState(() => normalizeProducts(loadArrayLS(PRODUCTS_KEY, initialProducts)));
   const [cart,           setCart]           = useState([]);
-  const [transactions,   setTransactions]   = useState(() => normalizeTransactions(loadArrayLS('sip-transactions', [])));
+  const [transactions,   setTransactions]   = useState(() => normalizeTransactions(loadArrayLS(TRANSACTIONS_KEY, [])));
   const [checkoutOpen,   setCheckoutOpen]   = useState(false);
   const [receiptOpen,    setReceiptOpen]    = useState(false);
   const [currentReceipt, setCurrentReceipt] = useState(null);
+  const [syncState,      setSyncState]      = useState(cloudEnabled ? 'connecting' : 'local');
+
+  const productsRef = useRef(products);
+  const transactionsRef = useRef(transactions);
+  const cloudReadyRef = useRef(!cloudEnabled);
+  const applyingRemoteRef = useRef(false);
+  const cloudWriteTimerRef = useRef(null);
+  const lastCloudStampRef = useRef(null);
 
   const allowedTabs = TABS.filter(t => t.roles.includes(currentUser?.role || ''));
+
+  useEffect(() => {
+    productsRef.current = products;
+  }, [products]);
+
+  useEffect(() => {
+    transactionsRef.current = transactions;
+  }, [transactions]);
+
+  useEffect(() => {
+    if (!cloudEnabled) return undefined;
+
+    let cancelled = false;
+
+    const bootstrapCloud = async () => {
+      try {
+        const cloudState = await pullCloudState();
+        if (cancelled) return;
+
+        if (cloudState) {
+          lastCloudStampRef.current = cloudState.updatedAt;
+          applyingRemoteRef.current = true;
+          setProducts(normalizeProducts(cloudState.products));
+          setTransactions(normalizeTransactions(cloudState.transactions));
+          setTimeout(() => { applyingRemoteRef.current = false; }, 0);
+        } else {
+          const stamp = await pushCloudState({
+            products: productsRef.current,
+            transactions: transactionsRef.current,
+          });
+          lastCloudStampRef.current = stamp;
+        }
+
+        setSyncState('live');
+      } catch (error) {
+        console.error('Cloud sync bootstrap failed:', error);
+        setSyncState('error');
+      } finally {
+        cloudReadyRef.current = true;
+      }
+    };
+
+    const unsubscribe = subscribeCloudState((cloudState) => {
+      if (cancelled) return;
+      if (cloudState.updatedAt && cloudState.updatedAt === lastCloudStampRef.current) return;
+
+      lastCloudStampRef.current = cloudState.updatedAt;
+      applyingRemoteRef.current = true;
+      setProducts(normalizeProducts(cloudState.products));
+      setTransactions(normalizeTransactions(cloudState.transactions));
+      setSyncState('live');
+      setTimeout(() => { applyingRemoteRef.current = false; }, 0);
+    });
+
+    bootstrapCloud();
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+      if (cloudWriteTimerRef.current) {
+        clearTimeout(cloudWriteTimerRef.current);
+        cloudWriteTimerRef.current = null;
+      }
+    };
+  }, [cloudEnabled]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -125,14 +209,46 @@ export default function App() {
   }, [activeTab, allowedTabs, currentUser]);
 
   useEffect(() => {
-    try { localStorage.setItem('sip-products', JSON.stringify(products)); }
+    try { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products)); }
     catch { /* ignore storage write issues to avoid crashing UI */ }
   }, [products]);
 
   useEffect(() => {
-    try { localStorage.setItem('sip-transactions', JSON.stringify(transactions)); }
+    try { localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(transactions)); }
     catch { /* ignore storage write issues to avoid crashing UI */ }
   }, [transactions]);
+
+  useEffect(() => {
+    if (!cloudEnabled || !cloudReadyRef.current || applyingRemoteRef.current) return undefined;
+
+    if (cloudWriteTimerRef.current) {
+      clearTimeout(cloudWriteTimerRef.current);
+      cloudWriteTimerRef.current = null;
+    }
+
+    const payload = {
+      products,
+      transactions,
+    };
+
+    cloudWriteTimerRef.current = setTimeout(async () => {
+      try {
+        const stamp = await pushCloudState(payload);
+        lastCloudStampRef.current = stamp;
+        setSyncState('live');
+      } catch (error) {
+        console.error('Cloud sync push failed:', error);
+        setSyncState('error');
+      }
+    }, CLOUD_PUSH_DELAY_MS);
+
+    return () => {
+      if (cloudWriteTimerRef.current) {
+        clearTimeout(cloudWriteTimerRef.current);
+        cloudWriteTimerRef.current = null;
+      }
+    };
+  }, [cloudEnabled, products, transactions]);
 
   const addToCart = (product) =>
     setCart(prev => {
@@ -268,6 +384,11 @@ export default function App() {
           </div>
         </div>
         <div className="header-meta">
+          <span className={`hdr-badge ${syncState === 'error' ? 'warning' : 'success'}`}>
+            {cloudEnabled
+              ? (syncState === 'connecting' ? `Syncing ${getStoreId()}...` : syncState === 'error' ? 'Sync Error' : `Realtime ${getStoreId()}`)
+              : 'Local Only'}
+          </span>
           <span className={`hdr-badge ${currentUser.role === 'admin' ? 'info' : 'success'}`}>
             {currentUser.role === 'admin' ? 'Admin' : 'Cashier'}: {currentUser.displayName}
           </span>
