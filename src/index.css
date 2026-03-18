@@ -608,6 +608,19 @@ h1,h2,h3,h4 { font-weight: 700; color: var(--text); }
 .sh-meta   { display: flex; gap: 16px; flex-wrap: wrap; }
 .sh-stat   { font-size: .85rem; color: var(--text-muted); }
 .sh-stat strong { color: var(--text); }
+.sh-actions { margin-left: auto; }
+
+.sh-reset-btn {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: #c0392b;
+  color: #fff;
+  font-size: .8rem;
+  font-weight: 700;
+  transition: background .12s;
+}
+.sh-reset-btn:hover:not(:disabled) { background: #962d22; }
+.sh-reset-btn:disabled { opacity: .55; cursor: not-allowed; }
 
 .sh-filters {
   display: flex;
@@ -658,6 +671,39 @@ h1,h2,h3,h4 { font-weight: 700; color: var(--text); }
 .pay-tag.card  { background: #FFF3E0; color: #E65100; }
 .view-receipt-btn { padding: 5px 12px; border-radius: var(--radius-sm); background: var(--primary); color: #fff; font-size: .78rem; font-weight: 600; transition: background .12s; }
 .view-receipt-btn:hover { background: var(--primary-dark); }
+
+.tx-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: .73rem;
+  font-weight: 700;
+}
+.tx-status-pill.completed { background: #D4EDDA; color: #155724; }
+.tx-status-pill.refunded { background: #F8D7DA; color: #842029; }
+
+.tx-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.refund-btn {
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  background: #8e44ad;
+  color: #fff;
+  font-size: .78rem;
+  font-weight: 600;
+  transition: background .12s;
+}
+.refund-btn:hover:not(:disabled) { background: #6f3388; }
+.refund-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.refunded-row td {
+  opacity: .72;
+}
 
 /* ── Bottom sheet (mobile cart) ────────────────────────────── */
 .sheet-overlay {
@@ -728,6 +774,7 @@ h1,h2,h3,h4 { font-weight: 700; color: var(--text); }
   .pay-methods { grid-template-columns: repeat(2, 1fr); }
 
   .sh-header { flex-direction: column; }
+  .sh-actions { margin-left: 0; }
   .sh-filters { align-items: stretch; }
   .date-filter { width: 100%; }
   .date-filter select { min-width: 0; width: 100%; }

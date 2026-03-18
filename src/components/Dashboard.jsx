@@ -3,19 +3,21 @@ import { useMemo } from 'react';
 export default function Dashboard({ products, transactions }) {
   const stats = useMemo(() => {
     const today    = new Date().toDateString();
-    const todayTxs = transactions.filter(t => new Date(t.timestamp).toDateString() === today);
+    const completedTxs = transactions.filter(t => !t.refunded);
+    const todayTxs = completedTxs.filter(t => new Date(t.timestamp).toDateString() === today);
 
     return {
-      totalSales:    transactions.reduce((s, t) => s + t.total, 0),
-      totalOrders:   transactions.length,
-      totalItemsSold:transactions.reduce((s, t) => s + t.items.reduce((a, i) => a + i.quantity, 0), 0),
+      totalSales:    completedTxs.reduce((s, t) => s + t.total, 0),
+      totalOrders:   completedTxs.length,
+      totalItemsSold:completedTxs.reduce((s, t) => s + t.items.reduce((a, i) => a + i.quantity, 0), 0),
       lowStockItems: products.filter(p => p.stock <= p.lowStock),
       todaySales:    todayTxs.reduce((s, t) => s + t.total, 0),
       todayOrders:   todayTxs.length,
+      refundedOrders: transactions.filter(t => t.refunded).length,
     };
   }, [products, transactions]);
 
-  const recent = transactions.slice(0, 5);
+  const recent = transactions.filter(t => !t.refunded).slice(0, 5);
 
   return (
     <div className="dashboard">
@@ -27,6 +29,7 @@ export default function Dashboard({ products, transactions }) {
         <SummaryCard icon="📈" label="Total Sales"    value={`₱${stats.totalSales.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`} sub="All time"                                color="success" />
         <SummaryCard icon="🛒" label="Total Orders"   value={stats.totalOrders}    sub="Completed transactions"   color="info"    />
         <SummaryCard icon="📦" label="Items Sold"     value={stats.totalItemsSold} sub="Total quantity sold"       color="accent"  />
+        <SummaryCard icon="↩️" label="Refunded"      value={stats.refundedOrders} sub="Refunded transactions"      color="warning" />
         <SummaryCard
           icon="⚠️"
           label="Low Stock"

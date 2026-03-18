@@ -61,6 +61,8 @@ function normalizeTransactions(transactions) {
       change: Number(t.change) || 0,
       paymentMethod: String(t.paymentMethod || 'Cash'),
       timestamp: t.timestamp || new Date().toISOString(),
+      refunded: Boolean(t.refunded),
+      refundedAt: t.refundedAt || null,
     }));
 }
 
@@ -181,6 +183,8 @@ export default function App() {
       change:        +(amountReceived - cartTotal).toFixed(2),
       paymentMethod,
       timestamp:     new Date().toISOString(),
+      refunded:      false,
+      refundedAt:    null,
     };
     setProducts(prev =>
       prev.map(p => {
@@ -193,6 +197,38 @@ export default function App() {
     clearCart();
     setCheckoutOpen(false);
     setReceiptOpen(true);
+  };
+
+  const refundTransaction = (transactionId) => {
+    const tx = transactions.find(t => t.id === transactionId);
+    if (!tx) return { ok: false, message: 'Transaction not found.' };
+    if (tx.refunded) return { ok: false, message: 'This transaction is already refunded.' };
+
+    setProducts(prev =>
+      prev.map(product => {
+        const soldItem = tx.items.find(item => item.id === product.id);
+        if (!soldItem) return product;
+        const qty = Math.max(0, Number(soldItem.quantity) || 0);
+        return { ...product, stock: product.stock + qty };
+      })
+    );
+
+    setTransactions(prev =>
+      prev.map(transaction =>
+        transaction.id === transactionId
+          ? { ...transaction, refunded: true, refundedAt: new Date().toISOString() }
+          : transaction,
+      )
+    );
+
+    return { ok: true };
+  };
+
+  const resetSalesHistory = () => {
+    setTransactions([]);
+    setReceiptOpen(false);
+    setCurrentReceipt(null);
+    return { ok: true };
   };
 
   const openReceiptFromHistory = (tx) => { setCurrentReceipt(tx); setReceiptOpen(true); };
@@ -272,7 +308,13 @@ export default function App() {
           />
         )}
         {activeTab === 'sales' && (
-          <SalesHistory transactions={transactions} onViewReceipt={openReceiptFromHistory} />
+          <SalesHistory
+            transactions={transactions}
+            onViewReceipt={openReceiptFromHistory}
+            onRefund={refundTransaction}
+            onResetSales={resetSalesHistory}
+            canManageSales={currentUser.role === 'admin'}
+          />
         )}
       </main>
 

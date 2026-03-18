@@ -17,9 +17,44 @@ function formatDateLabel(dateKey) {
   return d.toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export default function SalesHistory({ transactions, onViewReceipt }) {
+export default function SalesHistory({ transactions, onViewReceipt, onRefund, onResetSales, canManageSales }) {
   const [search, setSearch] = useState('');
   const [selectedDate, setSelectedDate] = useState('all');
+
+  const completedTransactions = transactions.filter(t => !t.refunded);
+  const refundedTransactions = transactions.filter(t => t.refunded);
+
+  const handleRefund = (tx) => {
+    if (!onRefund || tx.refunded || !canManageSales) return;
+
+    const confirmed = window.confirm(
+      `Refund ${tx.receiptNumber}? This will return sold items to inventory.`,
+    );
+    if (!confirmed) return;
+
+    const result = onRefund(tx.id);
+    if (!result?.ok && result?.message) {
+      window.alert(result.message);
+    }
+  };
+
+  const handleResetSales = () => {
+    if (!onResetSales || !canManageSales || transactions.length === 0) return;
+
+    const confirmed = window.confirm(
+      'Reset all sales history? This action cannot be undone.',
+    );
+    if (!confirmed) return;
+
+    const result = onResetSales();
+    if (!result?.ok && result?.message) {
+      window.alert(result.message);
+      return;
+    }
+
+    setSearch('');
+    setSelectedDate('all');
+  };
 
   const dailySummary = useMemo(() => {
     const byDate = new Map();
@@ -32,11 +67,16 @@ export default function SalesHistory({ transactions, onViewReceipt }) {
         transactions: 0,
         itemsSold: 0,
         revenue: 0,
+        refunded: 0,
       };
 
       existing.transactions += 1;
-      existing.itemsSold += tx.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-      existing.revenue += Number(tx.total || 0);
+      if (tx.refunded) {
+        existing.refunded += 1;
+      } else {
+        existing.itemsSold += tx.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+        existing.revenue += Number(tx.total || 0);
+      }
       byDate.set(dateKey, existing);
     }
 
@@ -52,8 +92,9 @@ export default function SalesHistory({ transactions, onViewReceipt }) {
     )
   );
 
-  const totalRevenue = transactions.reduce((s, t) => s + t.total, 0);
-  const totalItemsSold = transactions.reduce((s, t) => s + t.items.reduce((a, i) => a + i.quantity, 0), 0);
+  const totalRevenue = completedTransactions.reduce((s, t) => s + t.total, 0);
+  const totalItemsSold = completedTransactions.reduce((s, t) => s + t.items.reduce((a, i) => a + i.quantity, 0), 0);
+  const totalRefunded = refundedTransactions.reduce((s, t) => s + t.total, 0);
 
   return (
     <div className="sales-history">
@@ -61,7 +102,7 @@ export default function SalesHistory({ transactions, onViewReceipt }) {
         <h2 className="section-title">Sales History</h2>
         <div className="sh-meta">
           <span className="sh-stat">
-            <strong>{transactions.length}</strong> transactions
+            <strong>{completedTransactions.length}</strong> completed
           </span>
           <span className="sh-stat">
             <strong>₱{totalRevenue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong> total revenue
@@ -69,7 +110,20 @@ export default function SalesHistory({ transactions, onViewReceipt }) {
           <span className="sh-stat">
             <strong>{totalItemsSold}</strong> items sold
           </span>
+          <span className="sh-stat">
+            <strong>{refundedTransactions.length}</strong> refunded
+          </span>
+          <span className="sh-stat">
+            <strong>₱{totalRefunded.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong> refund amount
+          </span>
         </div>
+        {canManageSales && (
+          <div className="sh-actions">
+            <button className="sh-reset-btn" onClick={handleResetSales} disabled={transactions.length === 0}>
+              Reset Sales
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="sh-filters">
@@ -120,6 +174,7 @@ export default function SalesHistory({ transactions, onViewReceipt }) {
                     <th>Transactions</th>
                     <th>Items Sold</th>
                     <th>Revenue</th>
+                    <th>Refunded</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -130,6 +185,7 @@ export default function SalesHistory({ transactions, onViewReceipt }) {
                       <td>{day.transactions}</td>
                       <td className="daily-items-sold">{day.itemsSold}</td>
                       <td className="price-cell">₱{day.revenue.toFixed(2)}</td>
+                      <td>{day.refunded}</td>
                       <td>
                         <button className="view-receipt-btn" onClick={() => setSelectedDate(day.dateKey)}>
                           View Date
@@ -154,14 +210,15 @@ export default function SalesHistory({ transactions, onViewReceipt }) {
                     <th>Subtotal</th>
                     <th>VAT</th>
                     <th>Total</th>
-                    <th>Receipt</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map(t => {
                     const d = new Date(t.timestamp);
                     return (
-                      <tr key={t.id}>
+                      <tr key={t.id} className={t.refunded ? 'refunded-row' : ''}>
                         <td><span className="receipt-tag">{t.receiptNumber}</span></td>
                         <td>
                           <div className="date-cell">
@@ -186,19 +243,36 @@ export default function SalesHistory({ transactions, onViewReceipt }) {
                         <td>₱{Number(t.tax).toFixed(2)}</td>
                         <td className="price-cell">₱{Number(t.total).toFixed(2)}</td>
                         <td>
-                          <button
-                            className="view-receipt-btn"
-                            onClick={() => onViewReceipt(t)}
-                            title="View Receipt"
-                          >
-                            🧾 View
-                          </button>
+                          <span className={`tx-status-pill ${t.refunded ? 'refunded' : 'completed'}`}>
+                            {t.refunded ? 'Refunded' : 'Completed'}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="tx-actions">
+                            <button
+                              className="view-receipt-btn"
+                              onClick={() => onViewReceipt(t)}
+                              title="View Receipt"
+                            >
+                              🧾 View
+                            </button>
+                            {canManageSales && (
+                              <button
+                                className="refund-btn"
+                                onClick={() => handleRefund(t)}
+                                disabled={t.refunded}
+                                title={t.refunded ? 'Already refunded' : 'Refund this sale'}
+                              >
+                                Refund
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
                   })}
                   {filtered.length === 0 && (
-                    <tr><td colSpan={8} className="empty-row">No results for the selected date/filter.</td></tr>
+                    <tr><td colSpan={9} className="empty-row">No results for the selected date/filter.</td></tr>
                   )}
                 </tbody>
               </table>
