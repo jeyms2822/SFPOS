@@ -104,6 +104,20 @@ function normalizeUserSession(user) {
   };
 }
 
+function formatSyncTimestamp(value) {
+  if (!value) return 'Not yet';
+
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return 'Not yet';
+  return d.toLocaleString('en-PH', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
 export default function App() {
   const cloudEnabled = isCloudSyncEnabled();
   const [activeTab,      setActiveTab]      = useState('pos');
@@ -115,6 +129,8 @@ export default function App() {
   const [receiptOpen,    setReceiptOpen]    = useState(false);
   const [currentReceipt, setCurrentReceipt] = useState(null);
   const [syncState,      setSyncState]      = useState(cloudEnabled ? 'connecting' : 'local');
+  const [networkOnline,  setNetworkOnline]  = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
+  const [lastSyncedAt,   setLastSyncedAt]   = useState(null);
 
   const productsRef = useRef(products);
   const transactionsRef = useRef(transactions);
@@ -124,6 +140,32 @@ export default function App() {
   const lastCloudStampRef = useRef(null);
 
   const allowedTabs = TABS.filter(t => t.roles.includes(currentUser?.role || ''));
+
+  const applyCloudSnapshot = (cloudState) => {
+    if (!cloudState) return;
+
+    lastCloudStampRef.current = cloudState.updatedAt;
+    setLastSyncedAt(cloudState.updatedAt || new Date().toISOString());
+    applyingRemoteRef.current = true;
+    setProducts(normalizeProducts(cloudState.products));
+    setTransactions(normalizeTransactions(cloudState.transactions));
+    setTimeout(() => { applyingRemoteRef.current = false; }, 0);
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const markOnline = () => setNetworkOnline(true);
+    const markOffline = () => setNetworkOnline(false);
+
+    window.addEventListener('online', markOnline);
+    window.addEventListener('offline', markOffline);
+
+    return () => {
+      window.removeEventListener('online', markOnline);
+      window.removeEventListener('offline', markOffline);
+    };
+  }, []);
 
   useEffect(() => {
     productsRef.current = products;
@@ -144,17 +186,14 @@ export default function App() {
         if (cancelled) return;
 
         if (cloudState) {
-          lastCloudStampRef.current = cloudState.updatedAt;
-          applyingRemoteRef.current = true;
-          setProducts(normalizeProducts(cloudState.products));
-          setTransactions(normalizeTransactions(cloudState.transactions));
-          setTimeout(() => { applyingRemoteRef.current = false; }, 0);
+          applyCloudSnapshot(cloudState);
         } else {
           const stamp = await pushCloudState({
             products: productsRef.current,
             transactions: transactionsRef.current,
           });
           lastCloudStampRef.current = stamp;
+          setLastSyncedAt(stamp);
         }
 
         setSyncState('live');
@@ -170,12 +209,8 @@ export default function App() {
       if (cancelled) return;
       if (cloudState.updatedAt && cloudState.updatedAt === lastCloudStampRef.current) return;
 
-      lastCloudStampRef.current = cloudState.updatedAt;
-      applyingRemoteRef.current = true;
-      setProducts(normalizeProducts(cloudState.products));
-      setTransactions(normalizeTransactions(cloudState.transactions));
+      applyCloudSnapshot(cloudState);
       setSyncState('live');
-      setTimeout(() => { applyingRemoteRef.current = false; }, 0);
     });
 
     bootstrapCloud();
@@ -235,6 +270,7 @@ export default function App() {
       try {
         const stamp = await pushCloudState(payload);
         lastCloudStampRef.current = stamp;
+        setLastSyncedAt(stamp);
         setSyncState('live');
       } catch (error) {
         console.error('Cloud sync push failed:', error);
@@ -294,6 +330,34 @@ export default function App() {
     setCurrentReceipt(null);
     clearCart();
     setActiveTab('pos');
+  };
+
+  const retryCloudSync = async () => {
+    if (!cloudEnabled) return;
+
+    if (cloudWriteTimerRef.current) {
+      clearTimeout(cloudWriteTimerRef.current);
+      cloudWriteTimerRef.current = null;
+    }
+
+    setSyncState('connecting');
+    try {
+      const cloudState = await pullCloudState();
+      if (cloudState) {
+        applyCloudSnapshot(cloudState);
+      } else {
+        const stamp = await pushCloudState({
+          products: productsRef.current,
+          transactions: transactionsRef.current,
+        });
+        lastCloudStampRef.current = stamp;
+        setLastSyncedAt(stamp);
+      }
+      setSyncState('live');
+    } catch (error) {
+      console.error('Cloud sync retry failed:', error);
+      setSyncState('error');
+    }
   };
 
   const cartSubtotal  = cart.reduce((s, i) => s + i.price * i.quantity, 0);
@@ -414,6 +478,39 @@ export default function App() {
           </button>
         ))}
       </nav>
+
+      <div className="sync-status-panel">
+        <div className="sync-status-row">
+          <span className="sync-status-label">Sync</span>
+          <span className={`sync-status-pill ${syncState}`}>
+            {cloudEnabled
+              ? (syncState === 'connecting' ? 'Connecting' : syncState === 'error' ? 'Sync Error' : 'Realtime Connected')
+              : 'Local Only'}
+          </span>
+        </div>
+
+        <div className="sync-status-row">
+          <span className="sync-status-label">Network</span>
+          <span className={`sync-status-pill ${networkOnline ? 'online' : 'offline'}`}>
+            {networkOnline ? 'Online' : 'Offline'}
+          </span>
+        </div>
+
+        <div className="sync-status-row grow">
+          <span className="sync-status-label">Last Synced</span>
+          <span className="sync-status-value">{formatSyncTimestamp(lastSyncedAt)}</span>
+        </div>
+
+        {cloudEnabled && (
+          <button
+            className="sync-retry-btn"
+            onClick={retryCloudSync}
+            disabled={!networkOnline || syncState === 'connecting'}
+          >
+            Retry
+          </button>
+        )}
+      </div>
 
       <main className="app-main">
         {currentUser.role === 'admin' && activeTab === 'dashboard' && (

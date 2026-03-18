@@ -83,6 +83,73 @@ h1,h2,h3,h4 { font-weight: 700; color: var(--text); }
 /* ── App Layout ────────────────────────────────────────────── */
 .app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
+.sync-status-panel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  background: #fbf4e8;
+  border-bottom: 1px solid var(--border);
+}
+
+.sync-status-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sync-status-row.grow {
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+
+.sync-status-label {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.sync-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: .73rem;
+  font-weight: 700;
+  background: var(--bg-sidebar);
+  color: var(--text-muted);
+}
+
+.sync-status-pill.connecting { background: #FFF3CD; color: #856404; }
+.sync-status-pill.live { background: #D4EDDA; color: #155724; }
+.sync-status-pill.error { background: #F8D7DA; color: #842029; }
+.sync-status-pill.local { background: #E2E3E5; color: #41464B; }
+.sync-status-pill.online { background: #D1ECF1; color: #0C5460; }
+.sync-status-pill.offline { background: #F8D7DA; color: #842029; }
+
+.sync-status-value {
+  font-size: .82rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.sync-retry-btn {
+  margin-left: auto;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  color: #fff;
+  font-size: .78rem;
+  font-weight: 700;
+  transition: background .12s;
+}
+
+.sync-retry-btn:hover:not(:disabled) { background: var(--primary-dark); }
+.sync-retry-btn:disabled { opacity: .5; cursor: not-allowed; }
+
 /* ── Login ─────────────────────────────────────────────────── */
 .login-shell {
   min-height: 100vh;
@@ -774,6 +841,8 @@ h1,h2,h3,h4 { font-weight: 700; color: var(--text); }
   .pay-methods { grid-template-columns: repeat(2, 1fr); }
 
   .sh-header { flex-direction: column; }
+  .sync-status-row.grow { flex: 1 1 100%; }
+  .sync-retry-btn { margin-left: 0; }
   .sh-actions { margin-left: 0; }
   .sh-filters { align-items: stretch; }
   .date-filter { width: 100%; }
